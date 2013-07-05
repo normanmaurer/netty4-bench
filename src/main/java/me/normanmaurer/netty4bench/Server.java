@@ -5,16 +5,18 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.MessageList;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.MessageToMessageDecoder;
+import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -23,6 +25,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.CharsetUtil;
+import io.netty.util.ReferenceCountUtil;
 
 import javax.net.ssl.SSLContext;
 
@@ -38,7 +41,7 @@ public class Server {
             Unpooled.unreleasableBuffer(Unpooled.copiedBuffer("Hello World", CharsetUtil.US_ASCII));
 
     public static void main(String args[]) {
-        //args = new String[] {"localhost", "8080", "16", "false"};
+        args = new String[] {"localhost", "8080", "16", "false"};
         if (args.length < 4) {
             System.err.println("Args must be: <host(String)> <port(int)> <numHandler(int)> <useSsl(boolean)>");
             System.exit(1);
@@ -48,6 +51,7 @@ public class Server {
         int port = Integer.parseInt(args[1]);
         final int numHandlers = Integer.parseInt(args[2]);
         final boolean useSsl = Boolean.valueOf(args[3]);
+
         EventLoopGroup group = new NioEventLoopGroup();
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
@@ -66,8 +70,21 @@ public class Server {
 
                     int num = numHandlers - extraHandlers;
                     for (int i = 0; i < num; i++) {
-                        // just add duplex handler which will forward in both direction
-                        pipeline.addLast(new ChannelDuplexHandler());
+                        if (i % 2  == 0) {
+                            pipeline.addLast(new MessageToMessageDecoder<Object>() {
+                                @Override
+                                protected void decode(ChannelHandlerContext ctx, Object msg, MessageList<Object> out) throws Exception {
+                                    out.add(ReferenceCountUtil.retain(msg));
+                                }
+                            });
+                        } else {
+                            pipeline.addLast(new MessageToMessageEncoder<Object>() {
+                                @Override
+                                protected void encode(ChannelHandlerContext ctx, Object msg, MessageList<Object> out) throws Exception {
+                                    out.add(ReferenceCountUtil.retain(msg));
+                                }
+                            });
+                        }
                     }
 
                     pipeline.addLast(new HttpServerCodec());
@@ -101,7 +118,7 @@ public class Server {
             });
             bootstrap.bind().syncUninterruptibly().channel().closeFuture().syncUninterruptibly();
         } finally {
-          group.shutdownGracefully().syncUninterruptibly();
+            group.shutdownGracefully().syncUninterruptibly();
         }
     }
 
