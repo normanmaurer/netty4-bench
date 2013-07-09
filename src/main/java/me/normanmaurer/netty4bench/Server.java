@@ -28,6 +28,7 @@ import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONNECTION;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
@@ -41,7 +42,7 @@ public class Server {
             Unpooled.unreleasableBuffer(Unpooled.copiedBuffer("Hello World", CharsetUtil.US_ASCII));
 
     public static void main(String args[]) {
-        args = new String[] {"localhost", "8080", "16", "false"};
+        //args = new String[] {"localhost", "8080", "16", "true"};
         if (args.length < 4) {
             System.err.println("Args must be: <host(String)> <port(int)> <numHandler(int)> <useSsl(boolean)>");
             System.exit(1);
@@ -65,7 +66,9 @@ public class Server {
                     if (useSsl) {
                         extraHandlers += 1;
                         SSLContext context = BogusSslContextFactory.getServerContext();
-                        pipeline.addLast(new SslHandler(context.createSSLEngine()));
+                        SSLEngine engine = context.createSSLEngine();
+                        engine.setUseClientMode(false);
+                        pipeline.addLast(new SslHandler(engine));
                     }
 
                     int num = numHandlers - extraHandlers;

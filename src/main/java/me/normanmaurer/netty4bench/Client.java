@@ -24,12 +24,14 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.ssl.SslHandler;
 
+import javax.net.ssl.SSLEngine;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Client {
 
     public static void main(String[] args) throws Exception {
+        //args = new String[] {"localhost", "8080", "3", "100", "true", "60000"};
         if (args.length < 6) {
             System.err.println("Args must be: <host(String)> <port(int)> <requestsPerConnection(int)> <concurrentConnections(int)> <useSsl(boolean)> <timeToRun(long)>");
             System.exit(1);
@@ -56,7 +58,9 @@ public class Client {
                 protected void initChannel(Channel ch) throws Exception {
                     ChannelPipeline pipeline = ch.pipeline();
                     if (useSsl) {
-                        pipeline.addLast(new SslHandler(BogusSslContextFactory.getClientContext().createSSLEngine()));
+                        SSLEngine engine = BogusSslContextFactory.getClientContext().createSSLEngine();
+                        engine.setUseClientMode(true);
+                        pipeline.addLast(new SslHandler(engine));
                     }
                     pipeline.addLast(new HttpClientCodec());
                     pipeline.addLast(new SimpleChannelInboundHandler<HttpObject>() {

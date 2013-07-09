@@ -66,10 +66,14 @@
           <target>${target.jdk}</target>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-      </plugin>
+        <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+            </configuration>
+        </plugin>
     </plugins>
   </build>
   <dependencies>
@@ -87,7 +91,7 @@
 
   <properties>
     <target.jdk>1.7</target.jdk>
-    <netty.version>4.0.0.CR9</netty.version>
+    <netty.version>4.0.0.CR10-SNAPSHOT</netty.version>
   </properties>
 
 </project>
