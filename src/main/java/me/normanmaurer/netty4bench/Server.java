@@ -11,7 +11,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.MessageList;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -30,6 +29,8 @@ import io.netty.util.ReferenceCountUtil;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import java.util.List;
+
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONNECTION;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
@@ -42,7 +43,7 @@ public class Server {
             Unpooled.unreleasableBuffer(Unpooled.copiedBuffer("Hello World", CharsetUtil.US_ASCII));
 
     public static void main(String args[]) {
-        //args = new String[] {"localhost", "8080", "16", "true"};
+        // args = new String[] {"localhost", "8080", "16", "true"};
         if (args.length < 4) {
             System.err.println("Args must be: <host(String)> <port(int)> <numHandler(int)> <useSsl(boolean)>");
             System.exit(1);
@@ -76,14 +77,14 @@ public class Server {
                         if (i % 2  == 0) {
                             pipeline.addLast(new MessageToMessageDecoder<Object>() {
                                 @Override
-                                protected void decode(ChannelHandlerContext ctx, Object msg, MessageList<Object> out) throws Exception {
+                                protected void decode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
                                     out.add(ReferenceCountUtil.retain(msg));
                                 }
                             });
                         } else {
                             pipeline.addLast(new MessageToMessageEncoder<Object>() {
                                 @Override
-                                protected void encode(ChannelHandlerContext ctx, Object msg, MessageList<Object> out) throws Exception {
+                                protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
                                     out.add(ReferenceCountUtil.retain(msg));
                                 }
                             });
@@ -94,7 +95,7 @@ public class Server {
                     pipeline.addLast(new SimpleChannelInboundHandler<HttpObject>() {
 
                         @Override
-                        public void messageReceived(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
+                        public void channelRead0(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
                             if (msg instanceof HttpRequest) {
                                 HttpRequest req = (HttpRequest) msg;
                                 boolean keepAlive = isKeepAlive(req);
@@ -103,10 +104,10 @@ public class Server {
                                 response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
 
                                 if (!keepAlive) {
-                                    ctx.write(response).addListener(ChannelFutureListener.CLOSE);
+                                    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
                                 } else {
                                     response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
-                                    ctx.write(response);
+                                    ctx.writeAndFlush(response);
                                 }
                             }
                         }

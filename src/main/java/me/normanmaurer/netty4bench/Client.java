@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Client {
 
     public static void main(String[] args) throws Exception {
-        //args = new String[] {"localhost", "8080", "3", "100", "true", "60000"};
+       // args = new String[] {"localhost", "8080", "3", "100", "true", "60000"};
         if (args.length < 6) {
             System.err.println("Args must be: <host(String)> <port(int)> <requestsPerConnection(int)> <concurrentConnections(int)> <useSsl(boolean)> <timeToRun(long)>");
             System.exit(1);
@@ -72,7 +72,7 @@ public class Client {
                         }
 
                         @Override
-                        protected void messageReceived(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
+                        protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
                             if (msg instanceof LastHttpContent) {
                                 responses.incrementAndGet();
                                 if (count < requestsPerConnection) {
@@ -95,7 +95,7 @@ public class Client {
                             if (keepAlive) {
                                 request.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
                             }
-                            ctx.write(request);
+                            ctx.writeAndFlush(request);
                             requests.incrementAndGet();
                             count++;
                         }
